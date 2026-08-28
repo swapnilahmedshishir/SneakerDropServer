@@ -140,7 +140,71 @@ describe('Phase 4: Reservation API & Concurrency Tests', () => {
     assert.strictEqual(res.body.success, false);
   });
 
-  it('8. Future drop reservation fails (400)', async () => {
+  it('8. TRANSACTION ROLLBACK: failed reservation insert restores stock', async () => {
+    const timestamp = Date.now();
+    const rollbackUser = await db.orm.public.User.create({ username: `rollback_user_${timestamp}` });
+    const rollbackDrop = await db.orm.public.Drop.create({
+      name: `Rollback Drop ${timestamp}`,
+      price: 90,
+      totalStock: 1,
+      availableStock: 1,
+      startsAt: new Date(Date.now() - 10000).toISOString()
+    });
+
+    // Pre-existing ACTIVE reservation for this user+drop (created directly, so the
+    // partial unique index (userId, dropId) WHERE status='ACTIVE' will reject any
+    // second insert). Stock is untouched, so the mirror transaction below starts at 1.
+    await db.orm.public.Reservation.create({
+      userId: rollbackUser.id,
+      dropId: rollbackDrop.id,
+      status: 'ACTIVE',
+      expiresAt: new Date(Date.now() + 60000).toISOString()
+    });
+
+    let insertError = null;
+    try {
+      // Mirror the service's exact transaction structure:
+      //   BEGIN -> atomic stock decrement -> create ACTIVE reservation -> COMMIT
+      // The reservation insert is forced to fail (unique index), so the whole
+      // transaction — including the already-applied stock decrement — must roll back.
+      await db.transaction(async (tx) => {
+        const stockPlan = db.raw.sql`
+          UPDATE "public"."drop"
+          SET "availableStock" = "availableStock" - 1, "updatedAt" = now()
+          WHERE "id" = ${rollbackDrop.id} AND "availableStock" > 0
+        `.affectedCount().build();
+
+        const stockResult = await tx.execute(stockPlan);
+        assert.strictEqual(stockResult.affectedRows, 1, 'decrement must affect exactly 1 row');
+
+        // This INSERT violates unique_active_reservation_per_user_drop...
+        await tx.orm.public.Reservation.create({
+          userId: rollbackUser.id,
+          dropId: rollbackDrop.id,
+          status: 'ACTIVE',
+          expiresAt: new Date(Date.now() + 60000).toISOString()
+        });
+      });
+    } catch (err) {
+      insertError = err;
+    }
+
+    assert.ok(insertError, 'second ACTIVE reservation insert must fail');
+    assert.strictEqual(insertError.sqlState, '23505');
+
+    // ROLLBACK VERIFIED: the stock decrement must have been undone
+    const rollbackDropAfter = await db.orm.public.Drop.where({ id: rollbackDrop.id }).first();
+    assert.strictEqual(rollbackDropAfter.availableStock, 1, 'availableStock must be restored after ROLLBACK');
+
+    // And only the original reservation exists
+    const reservationsAfter = await db.orm.public.Reservation.where({
+      userId: rollbackUser.id,
+      dropId: rollbackDrop.id
+    }).all();
+    assert.strictEqual(reservationsAfter.length, 1);
+  });
+
+  it('9. Future drop reservation fails (400)', async () => {
     const res = await request(`/api/drops/${futureDrop.id}/reserve`, {
       method: 'POST',
       body: JSON.stringify({ userId: testUser2.id })
@@ -151,7 +215,7 @@ describe('Phase 4: Reservation API & Concurrency Tests', () => {
     assert.strictEqual(res.body.message, 'Drop is not active yet');
   });
 
-  it('9. CONCURRENCY TEST: 100 concurrent reservation requests for a drop with stock = 1', async () => {
+  it('10. CONCURRENCY TEST: 100 concurrent reservation requests for a drop with stock = 1', async () => {
     const timestamp = Date.now();
     // Create drop with stock = 1
     const limitedDrop = await db.orm.public.Drop.create({
@@ -195,5 +259,49 @@ describe('Phase 4: Reservation API & Concurrency Tests', () => {
       status: 'ACTIVE'
     }).all();
     assert.strictEqual(activeReservations.length, 1, `Expected exactly 1 ACTIVE reservation in DB, got ${activeReservations.length}`);
+  });
+
+  it('11. CONCURRENCY: same user races for the same drop — DB unique index + rollback', async () => {
+    const timestamp = Date.now();
+    const raceUser = await db.orm.public.User.create({ username: `race_user_${timestamp}` });
+    const raceDrop = await db.orm.public.Drop.create({
+      name: `Race Drop ${timestamp}`,
+      price: 250,
+      totalStock: 2,
+      availableStock: 2,
+      startsAt: new Date(Date.now() - 10000).toISOString()
+    });
+
+    // Fire many concurrent reservations from the SAME user (stock = 2 is a red
+    // herring: the per-user partial unique index is what decides the winner).
+    const reqPromises = [];
+    for (let i = 0; i < 20; i++) {
+      reqPromises.push(
+        request(`/api/drops/${raceDrop.id}/reserve`, {
+          method: 'POST',
+          body: JSON.stringify({ userId: raceUser.id })
+        })
+      );
+    }
+    const results = await Promise.all(reqPromises);
+
+    const successCount = results.filter((r) => r.status === 201).length;
+    const conflictCount = results.filter((r) => r.status === 409).length;
+
+    // The partial unique ACTIVE index guarantees at most one can win...
+    assert.strictEqual(successCount, 1, `Expected exactly 1 successful reservation, got ${successCount}`);
+    assert.strictEqual(conflictCount, 19, `Expected 19 conflicts, got ${conflictCount}`);
+
+    // ...and every losing transaction must have rolled its stock decrement back,
+    // so only ONE unit was permanently consumed (2 -> 1).
+    const raceDropAfter = await db.orm.public.Drop.where({ id: raceDrop.id }).first();
+    assert.strictEqual(raceDropAfter.availableStock, 1, 'stock must drop by exactly 1 (losers rolled back)');
+
+    const activeRaces = await db.orm.public.Reservation.where({
+      userId: raceUser.id,
+      dropId: raceDrop.id,
+      status: 'ACTIVE'
+    }).all();
+    assert.strictEqual(activeRaces.length, 1, 'exactly one ACTIVE reservation must exist');
   });
 });

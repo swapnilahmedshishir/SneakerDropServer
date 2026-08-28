@@ -1,0 +1,74 @@
+// use prisma-next
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+  reservations Reservation[]
+  purchases    Purchase[]
+
+  @@index([username])
+}
+
+model Drop {
+  id             Int      @id @default(autoincrement())
+  name           String
+  price          Float
+  totalStock     Int
+  availableStock Int
+  startsAt       TimestamptzString
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  reservations Reservation[]
+  purchases    Purchase[]
+
+  @@index([startsAt])
+  @@index([availableStock])
+  @@check(expression: "\"availableStock\" >= 0 AND \"availableStock\" <= \"totalStock\"", name: "drop_stock_valid")
+}
+
+model Reservation {
+  id        Int               @id @default(autoincrement())
+  userId    Int
+  dropId    Int
+  status    ReservationStatus @default(ACTIVE)
+  expiresAt TimestamptzString
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drop     Drop     @relation(fields: [dropId], references: [id], onDelete: Cascade)
+  purchase Purchase?
+
+  @@index([status])
+  @@index([expiresAt, status])
+  @@index([userId, status])
+  @@index([dropId, status])
+  @@index([userId, dropId], where: "(status = 'ACTIVE')", unique: true, name: "unique_active_reservation_per_user_drop")
+}
+
+model Purchase {
+  id            Int         @id @default(autoincrement())
+  userId        Int
+  dropId        Int
+  reservationId Int         @unique
+  createdAt     TimestamptzString    @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drop        Drop        @relation(fields: [dropId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([dropId, createdAt])
+  @@index([userId])
+}
+
+enum ReservationStatus {
+  @@type("pg/text@1")
+  ACTIVE    = "ACTIVE"
+  EXPIRED   = "EXPIRED"
+  PURCHASED = "PURCHASED"
+}

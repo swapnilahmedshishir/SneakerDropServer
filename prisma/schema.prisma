@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  reservations Reservation[]
+  purchases    Purchase[]
+
+  @@index([username])
+}
+
+model Drop {
+  id              Int       @id @default(autoincrement())
+  name            String
+  price           Float
+  totalStock      Int
+  availableStock  Int
+  startsAt        DateTime
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+ 
+  @@check("availableStock >= 0")
+  @@check("availableStock <= totalStock")
+
+  reservations Reservation[]
+  purchases    Purchase[]
+
+  @@index([startsAt])
+  @@index([availableStock])
+}
+
+model Reservation {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  dropId    Int
+  status    ReservationStatus @default(ACTIVE)
+  expiresAt DateTime
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drop     Drop     @relation(fields: [dropId], references: [id], onDelete: Cascade)
+  purchase Purchase?
+
+ 
+  @@index([status])
+  @@index([expiresAt, status])
+  @@index([userId, status])
+  @@index([dropId, status])
+
+
+  @@unique([userId, dropId], where: { status: ACTIVE }, name: "unique_active_reservation_per_user_drop")
+}
+
+model Purchase {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  dropId        Int
+  reservationId Int       @unique
+  createdAt     DateTime  @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drop        Drop        @relation(fields: [dropId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+ 
+  @@index([dropId, createdAt])
+  @@index([userId])
+}
+
+enum ReservationStatus {
+  ACTIVE
+  EXPIRED
+  PURCHASED
+}

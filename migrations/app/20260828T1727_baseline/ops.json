@@ -1,0 +1,976 @@
+[
+  {
+    "id": "schema.public",
+    "label": "Create schema \"public\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Create schema \"public\"",
+        "sql": "CREATE SCHEMA IF NOT EXISTS \"public\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.drop",
+    "label": "Create table \"drop\"",
+    "summary": "Creates table \"drop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "drop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"drop\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"drop\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"drop\"",
+        "sql": "CREATE TABLE \"public\".\"drop\" (\n  \"availableStock\" int4 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  \"price\" float8 NOT NULL,\n  \"startsAt\" timestamptz NOT NULL,\n  \"totalStock\" int4 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"drop_stock_valid_9c22be51\" CHECK (\"availableStock\" >= 0 AND \"availableStock\" <= \"totalStock\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"drop\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"drop\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.purchase",
+    "label": "Create table \"purchase\"",
+    "summary": "Creates table \"purchase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"purchase\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"purchase\"",
+        "sql": "CREATE TABLE \"public\".\"purchase\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"dropId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"reservationId\" int4 NOT NULL,\n  \"userId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"purchase\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reservation",
+    "label": "Create table \"reservation\"",
+    "summary": "Creates table \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reservation\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reservation\"",
+        "sql": "CREATE TABLE \"public\".\"reservation\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"dropId\" int4 NOT NULL,\n  \"expiresAt\" timestamptz NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"status\" text DEFAULT 'ACTIVE' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"userId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"reservation_status_check_6e6d6ce9\" CHECK (\"status\" IN ('ACTIVE', 'EXPIRED', 'PURCHASED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reservation\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.user",
+    "label": "Create table \"user\"",
+    "summary": "Creates table \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"user\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"user\"",
+        "sql": "CREATE TABLE \"public\".\"user\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"username\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"user\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.purchase.purchase_reservationId_key",
+    "label": "Add unique constraint on \"purchase\" (reservationId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "purchase_reservationId_key",
+        "table": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"purchase_reservationId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchase_reservationId_key",
+          "public",
+          "\"public\".\"purchase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"purchase_reservationId_key\"",
+        "sql": "ALTER TABLE \"public\".\"purchase\" ADD CONSTRAINT \"purchase_reservationId_key\" UNIQUE (\"reservationId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"purchase_reservationId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchase_reservationId_key",
+          "public",
+          "\"public\".\"purchase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.user.user_username_key",
+    "label": "Add unique constraint on \"user\" (username)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "user_username_key",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"user_username_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_username_key",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"user_username_key\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD CONSTRAINT \"user_username_key\" UNIQUE (\"username\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"user_username_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_username_key",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.drop.drop_availableStock_idx_065dc12d",
+    "label": "Create index \"drop_availableStock_idx_065dc12d\" on \"drop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "drop_availableStock_idx_065dc12d",
+        "table": "drop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"drop_availableStock_idx_065dc12d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"drop_availableStock_idx_065dc12d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"drop_availableStock_idx_065dc12d\"",
+        "sql": "CREATE INDEX \"drop_availableStock_idx_065dc12d\" ON \"public\".\"drop\" (\"availableStock\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"drop_availableStock_idx_065dc12d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"drop_availableStock_idx_065dc12d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.drop.drop_startsAt_idx_5ff0df68",
+    "label": "Create index \"drop_startsAt_idx_5ff0df68\" on \"drop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "drop_startsAt_idx_5ff0df68",
+        "table": "drop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"drop_startsAt_idx_5ff0df68\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"drop_startsAt_idx_5ff0df68\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"drop_startsAt_idx_5ff0df68\"",
+        "sql": "CREATE INDEX \"drop_startsAt_idx_5ff0df68\" ON \"public\".\"drop\" (\"startsAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"drop_startsAt_idx_5ff0df68\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"drop_startsAt_idx_5ff0df68\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.purchase.purchase_dropId_createdAt_idx_bd1a630a",
+    "label": "Create index \"purchase_dropId_createdAt_idx_bd1a630a\" on \"purchase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "purchase_dropId_createdAt_idx_bd1a630a",
+        "table": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"purchase_dropId_createdAt_idx_bd1a630a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase_dropId_createdAt_idx_bd1a630a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"purchase_dropId_createdAt_idx_bd1a630a\"",
+        "sql": "CREATE INDEX \"purchase_dropId_createdAt_idx_bd1a630a\" ON \"public\".\"purchase\" (\"dropId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"purchase_dropId_createdAt_idx_bd1a630a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase_dropId_createdAt_idx_bd1a630a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.purchase.purchase_dropId_idx_b3ecbbed",
+    "label": "Create index \"purchase_dropId_idx_b3ecbbed\" on \"purchase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "purchase_dropId_idx_b3ecbbed",
+        "table": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"purchase_dropId_idx_b3ecbbed\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase_dropId_idx_b3ecbbed\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"purchase_dropId_idx_b3ecbbed\"",
+        "sql": "CREATE INDEX \"purchase_dropId_idx_b3ecbbed\" ON \"public\".\"purchase\" (\"dropId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"purchase_dropId_idx_b3ecbbed\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase_dropId_idx_b3ecbbed\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.purchase.purchase_userId_idx_a489d58a",
+    "label": "Create index \"purchase_userId_idx_a489d58a\" on \"purchase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "purchase_userId_idx_a489d58a",
+        "table": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"purchase_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"purchase_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"purchase_userId_idx_a489d58a\" ON \"public\".\"purchase\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"purchase_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reservation.reservation_dropId_idx_b3ecbbed",
+    "label": "Create index \"reservation_dropId_idx_b3ecbbed\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reservation_dropId_idx_b3ecbbed",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reservation_dropId_idx_b3ecbbed\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_dropId_idx_b3ecbbed\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reservation_dropId_idx_b3ecbbed\"",
+        "sql": "CREATE INDEX \"reservation_dropId_idx_b3ecbbed\" ON \"public\".\"reservation\" (\"dropId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reservation_dropId_idx_b3ecbbed\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_dropId_idx_b3ecbbed\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reservation.reservation_dropId_status_idx_dde9a783",
+    "label": "Create index \"reservation_dropId_status_idx_dde9a783\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reservation_dropId_status_idx_dde9a783",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reservation_dropId_status_idx_dde9a783\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_dropId_status_idx_dde9a783\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reservation_dropId_status_idx_dde9a783\"",
+        "sql": "CREATE INDEX \"reservation_dropId_status_idx_dde9a783\" ON \"public\".\"reservation\" (\"dropId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reservation_dropId_status_idx_dde9a783\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_dropId_status_idx_dde9a783\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reservation.reservation_expiresAt_status_idx_63867ed3",
+    "label": "Create index \"reservation_expiresAt_status_idx_63867ed3\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reservation_expiresAt_status_idx_63867ed3",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reservation_expiresAt_status_idx_63867ed3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_expiresAt_status_idx_63867ed3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reservation_expiresAt_status_idx_63867ed3\"",
+        "sql": "CREATE INDEX \"reservation_expiresAt_status_idx_63867ed3\" ON \"public\".\"reservation\" (\"expiresAt\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reservation_expiresAt_status_idx_63867ed3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_expiresAt_status_idx_63867ed3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reservation.reservation_status_idx_e98638ab",
+    "label": "Create index \"reservation_status_idx_e98638ab\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reservation_status_idx_e98638ab",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reservation_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reservation_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"reservation_status_idx_e98638ab\" ON \"public\".\"reservation\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reservation_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reservation.reservation_userId_idx_a489d58a",
+    "label": "Create index \"reservation_userId_idx_a489d58a\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reservation_userId_idx_a489d58a",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reservation_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reservation_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"reservation_userId_idx_a489d58a\" ON \"public\".\"reservation\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reservation_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reservation.reservation_userId_status_idx_e4a128ba",
+    "label": "Create index \"reservation_userId_status_idx_e4a128ba\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reservation_userId_status_idx_e4a128ba",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reservation_userId_status_idx_e4a128ba\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_userId_status_idx_e4a128ba\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reservation_userId_status_idx_e4a128ba\"",
+        "sql": "CREATE INDEX \"reservation_userId_status_idx_e4a128ba\" ON \"public\".\"reservation\" (\"userId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reservation_userId_status_idx_e4a128ba\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reservation_userId_status_idx_e4a128ba\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reservation.unique_active_reservation_per_user_drop_08b98d5b",
+    "label": "Create index \"unique_active_reservation_per_user_drop_08b98d5b\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "unique_active_reservation_per_user_drop_08b98d5b",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"unique_active_reservation_per_user_drop_08b98d5b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"unique_active_reservation_per_user_drop_08b98d5b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"unique_active_reservation_per_user_drop_08b98d5b\"",
+        "sql": "CREATE UNIQUE INDEX \"unique_active_reservation_per_user_drop_08b98d5b\" ON \"public\".\"reservation\" (\"userId\", \"dropId\") WHERE ((status = 'ACTIVE'))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"unique_active_reservation_per_user_drop_08b98d5b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"unique_active_reservation_per_user_drop_08b98d5b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.user.user_username_idx_b719d535",
+    "label": "Create index \"user_username_idx_b719d535\" on \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "user_username_idx_b719d535",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"user_username_idx_b719d535\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"user_username_idx_b719d535\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"user_username_idx_b719d535\"",
+        "sql": "CREATE INDEX \"user_username_idx_b719d535\" ON \"public\".\"user\" (\"username\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"user_username_idx_b719d535\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"user_username_idx_b719d535\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.purchase.purchase_userId_fkey",
+    "label": "Add foreign key \"purchase_userId_fkey\" on \"purchase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "purchase_userId_fkey",
+        "table": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"purchase_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchase_userId_fkey",
+          "public",
+          "\"public\".\"purchase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"purchase_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"purchase\"\nADD CONSTRAINT \"purchase_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"purchase_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchase_userId_fkey",
+          "public",
+          "\"public\".\"purchase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.purchase.purchase_dropId_fkey",
+    "label": "Add foreign key \"purchase_dropId_fkey\" on \"purchase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "purchase_dropId_fkey",
+        "table": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"purchase_dropId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchase_dropId_fkey",
+          "public",
+          "\"public\".\"purchase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"purchase_dropId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"purchase\"\nADD CONSTRAINT \"purchase_dropId_fkey\"\nFOREIGN KEY (\"dropId\")\nREFERENCES \"public\".\"drop\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"purchase_dropId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchase_dropId_fkey",
+          "public",
+          "\"public\".\"purchase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.purchase.purchase_reservationId_fkey",
+    "label": "Add foreign key \"purchase_reservationId_fkey\" on \"purchase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "purchase_reservationId_fkey",
+        "table": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"purchase_reservationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchase_reservationId_fkey",
+          "public",
+          "\"public\".\"purchase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"purchase_reservationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"purchase\"\nADD CONSTRAINT \"purchase_reservationId_fkey\"\nFOREIGN KEY (\"reservationId\")\nREFERENCES \"public\".\"reservation\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"purchase_reservationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchase_reservationId_fkey",
+          "public",
+          "\"public\".\"purchase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.reservation.reservation_userId_fkey",
+    "label": "Add foreign key \"reservation_userId_fkey\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "reservation_userId_fkey",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"reservation_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reservation_userId_fkey",
+          "public",
+          "\"public\".\"reservation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"reservation_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"reservation\"\nADD CONSTRAINT \"reservation_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"reservation_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reservation_userId_fkey",
+          "public",
+          "\"public\".\"reservation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.reservation.reservation_dropId_fkey",
+    "label": "Add foreign key \"reservation_dropId_fkey\" on \"reservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "reservation_dropId_fkey",
+        "table": "reservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"reservation_dropId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reservation_dropId_fkey",
+          "public",
+          "\"public\".\"reservation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"reservation_dropId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"reservation\"\nADD CONSTRAINT \"reservation_dropId_fkey\"\nFOREIGN KEY (\"dropId\")\nREFERENCES \"public\".\"drop\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"reservation_dropId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reservation_dropId_fkey",
+          "public",
+          "\"public\".\"reservation\""
+        ]
+      }
+    ]
+  }
+]

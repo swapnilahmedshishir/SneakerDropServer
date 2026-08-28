@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dropRoutes from './routes/dropRoutes.js';
+import reservationRoutes from './routes/reservationRoutes.js';
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes & Health Check
 app.use('/api/drops', dropRoutes);
+app.use('/api/reservations', reservationRoutes);
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,

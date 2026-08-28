@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/server.js",
     "dev": "tsx src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsx --test src/tests/reservation.test.js src/tests/purchase.test.js",
     "postinstall": "prisma skills sync || exit 0",
     "contract:emit": "prisma contract emit",
     "seed": "tsx src/prisma/seed.ts"

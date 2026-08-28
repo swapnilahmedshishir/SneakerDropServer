@@ -52,7 +52,7 @@ export async function expireReservation(reservationId) {
     UPDATE "public"."drop" AS d
     SET "availableStock" = d."availableStock" + 1, "updatedAt" = now()
     FROM "public"."reservation" AS r
-    WHERE r."id" = ${parsedId} AND d."id" = r."dropId"
+    WHERE r."id" = ${parsedId} AND d."id" = r."dropId" AND d."availableStock" < d."totalStock"
   `.affectedCount().build();
 
   return await db.transaction(async (tx) => {

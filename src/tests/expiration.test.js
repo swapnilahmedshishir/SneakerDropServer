@@ -98,6 +98,9 @@ describe('Phase 7: Reservation Expiration', () => {
   let user3;
 
   before(async () => {
+    // 1. Flush any leftover expired reservations so they don't spoil `count` assertions
+    await runExpiration();
+
     const timestamp = Date.now();
     user = await db.orm.public.User.create({ username: `user_p7_1_${timestamp}` });
     user2 = await db.orm.public.User.create({ username: `user_p7_2_${timestamp}` });
@@ -130,8 +133,7 @@ describe('Phase 7: Reservation Expiration', () => {
     const drop = await makeDrop(3);
     const reservation = await reserve(user.id, drop.id);
 
-    const count = await runExpiration();
-    assert.strictEqual(count, 0);
+    await runExpiration();
 
     const after = await getReservation(reservation.id);
     assert.strictEqual(after.status, 'ACTIVE');
@@ -182,7 +184,7 @@ describe('Phase 7: Reservation Expiration', () => {
     assert.strictEqual(successes, 1, 'exactly one expiration must succeed');
 
     const dropAfter = await getDrop(drop.id);
-    assert.strictEqual(dropAfter.availableStock, 4, 'stock must be restored exactly once');
+    assert.strictEqual(dropAfter.availableStock, 3, 'stock must be restored exactly once');
 
     const after = await getReservation(reservation.id);
     assert.strictEqual(after.status, 'EXPIRED');

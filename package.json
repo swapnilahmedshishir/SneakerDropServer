@@ -9,7 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "prisma skills sync || exit 0",
     "contract:emit": "prisma contract emit",
-    "seed": "node src/prisma/seed.js"
+    "seed": "tsx src/prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +26,7 @@
   "devDependencies": {
     "@prisma/cli-engine": "^0.2.3",
     "@types/node": "^26.4.0",
-    "prisma": "^8.0.0-rc.10"
+    "prisma": "^8.0.0-rc.10",
+    "tsx": "^4.23.12"
   }
 }

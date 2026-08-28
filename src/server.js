@@ -2,6 +2,7 @@ import 'dotenv/config';
 import http from 'http';
 import { Server } from 'socket.io';
 import app from './app.js';
+import { startExpirationWorker } from './services/expirationService.js';
 
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
@@ -30,5 +31,11 @@ server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Socket.io server initialized`);
 });
+
+// Phase 7: start the background expiration worker. It polls the database every
+// EXPIRATION_POLL_INTERVAL_MS (default 1000ms) and atomically expires ACTIVE
+// reservations whose expiresAt has passed, restoring their stock. The database
+// remains the source of truth for what actually expires.
+startExpirationWorker();
 
 export { server, io };

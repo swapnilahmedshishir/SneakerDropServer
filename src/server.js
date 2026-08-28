@@ -1,7 +1,7 @@
-require('dotenv').config();
-const http = require('http');
-const { Server } = require('socket.io');
-const app = require('./app');
+import 'dotenv/config';
+import http from 'http';
+import { Server } from 'socket.io';
+import app from './app.js';
 
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
@@ -31,4 +31,4 @@ server.listen(PORT, () => {
   console.log(`Socket.io server initialized`);
 });
 
-module.exports = { server, io };
+export { server, io };

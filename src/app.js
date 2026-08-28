@@ -1,5 +1,6 @@
-const express = require('express');
-const cors = require('cors');
+import express from 'express';
+import cors from 'cors';
+import dropRoutes from './routes/dropRoutes.js';
 
 const app = express();
 
@@ -8,7 +9,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
+// Routes & Health Check
+app.use('/api/drops', dropRoutes);
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -33,4 +35,4 @@ app.use((err, req, res, next) => {
   });
 });
 
-module.exports = app;
+export default app;

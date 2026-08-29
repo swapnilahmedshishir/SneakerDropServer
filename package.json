@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/server.js",
     "dev": "tsx src/server.js",
-    "test": "tsx --test src/tests/reservation.test.js src/tests/purchase.test.js src/tests/expiration.test.js src/tests/dropPurchasers.test.js",
+    "test": "tsx --test --test-concurrency=1 src/tests/reservation.test.js src/tests/purchase.test.js src/tests/expiration.test.js src/tests/dropPurchasers.test.js src/tests/stress.test.js src/tests/expirationPurchaseRace.test.js src/tests/phase14.e2e.test.js",
     "postinstall": "prisma skills sync || exit 0",
     "contract:emit": "prisma contract emit",
     "seed": "tsx src/prisma/seed.ts"
@@ -27,6 +27,7 @@
     "@prisma/cli-engine": "^0.2.3",
     "@types/node": "^26.4.0",
     "prisma": "^8.0.0-rc.10",
+    "socket.io-client": "^4.8.3",
     "tsx": "^4.23.12"
   }
 }

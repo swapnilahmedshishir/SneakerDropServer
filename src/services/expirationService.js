@@ -1,5 +1,5 @@
 import { db } from '../prisma/db.ts';
-import { emitStockUpdated } from './socketService.js';
+import { emitStockUpdated, emitReservationExpired } from './socketService.js';
 
 // Business rule: reservations live for 60 seconds (enforced at creation time in
 // reservationService.js). Only the worker's POLL interval is configurable.
@@ -70,8 +70,11 @@ export async function expireReservation(reservationId) {
   });
 
   if (expired.restored) {
-    // Phase 10 — restoring the stock changed the drop again, so broadcast the
-    // new availableStock to open dashboards (best effort, never fail the flow).
+    // Phase 10/11 — restoring the stock changed the drop again AND the
+    // reservation was genuinely expired by the backend. Broadcast both facts
+    // so open dashboards update without a refresh. Best effort: a client that
+    // misses the event converges on its next fetch / API call.
+    emitReservationExpired(parsedId, expired.dropId);
     try {
       const drop = expired.dropId
         ? await db.orm.public.Drop.where({ id: expired.dropId }).first()

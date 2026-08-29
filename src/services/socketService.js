@@ -16,3 +16,17 @@ export function emitStockUpdated(dropId, availableStock) {
     });
   }
 }
+
+/**
+ * Broadcast that a reservation was expired by the backend (Phase 11). The
+ * client treats this as the authoritative signal — its local countdown is
+ * only a display, never the source of truth.
+ */
+export function emitReservationExpired(reservationId, dropId) {
+  if (ioInstance) {
+    ioInstance.emit('reservation_expired', {
+      reservationId: parseInt(reservationId, 10),
+      dropId: parseInt(dropId, 10)
+    });
+  }
+}

@@ -1,4 +1,5 @@
 import { db } from '../prisma/db.ts';
+import { emitStockUpdated } from './socketService.js';
 
 // Reservations are valid for 60 seconds (mirrors the Phase 4 API contract).
 const RESERVATION_TTL_MS = 60 * 1000;
@@ -18,7 +19,7 @@ export async function reserveDrop(userId, dropId) {
   }
 
   // Perform atomic transaction
-  return await db.transaction(async (tx) => {
+  const reservation = await db.transaction(async (tx) => {
     // 1. Verify User exists
     const user = await tx.orm.public.User.where({ id: parsedUserId }).first();
     if (!user) {
@@ -98,6 +99,28 @@ export async function reserveDrop(userId, dropId) {
     }
     throw err;
   });
+
+  // Phase 10 — notify connected dashboards that the drop's stock changed. This
+  // is best effort: a client that misses the event simply picks the fresh value
+  // up on its next fetch / reconnect, so a broadcast failure must never fail
+  // the reservation itself.
+  await broadcastStockUpdate(parsedDropId);
+
+  return reservation;
+}
+
+// Broadcast the drop's *current* availableStock. Reading it back after the
+// transaction keeps the value accurate even when several reservations land in
+// quick succession.
+async function broadcastStockUpdate(dropId) {
+  try {
+    const drop = await db.orm.public.Drop.where({ id: dropId }).first();
+    if (drop) {
+      emitStockUpdated(drop.id, drop.availableStock);
+    }
+  } catch (err) {
+    console.error('[socket] Failed to broadcast stock update:', err.message);
+  }
 }
 
 // ---------------------------------------------------------------------------

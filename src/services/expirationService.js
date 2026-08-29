@@ -1,4 +1,5 @@
 import { db } from '../prisma/db.ts';
+import { emitStockUpdated } from './socketService.js';
 
 // Business rule: reservations live for 60 seconds (enforced at creation time in
 // reservationService.js). Only the worker's POLL interval is configurable.
@@ -55,15 +56,36 @@ export async function expireReservation(reservationId) {
     WHERE r."id" = ${parsedId} AND d."id" = r."dropId" AND d."availableStock" < d."totalStock"
   `.affectedCount().build();
 
-  return await db.transaction(async (tx) => {
+  const expired = await db.transaction(async (tx) => {
     const flip = await tx.execute(flipPlan);
     if (flip.affectedRows === 0) {
       // Already expired, already purchased, or not expired yet.
       return false;
     }
     await tx.execute(restorePlan);
-    return true;
+
+    // Read the restored stock so the broadcast below reports a fresh value.
+    const reservation = await tx.orm.public.Reservation.where({ id: parsedId }).first();
+    return { restored: true, dropId: reservation ? reservation.dropId : null };
   });
+
+  if (expired.restored) {
+    // Phase 10 — restoring the stock changed the drop again, so broadcast the
+    // new availableStock to open dashboards (best effort, never fail the flow).
+    try {
+      const drop = expired.dropId
+        ? await db.orm.public.Drop.where({ id: expired.dropId }).first()
+        : null;
+      if (drop) {
+        emitStockUpdated(drop.id, drop.availableStock);
+      }
+    } catch (err) {
+      console.error('[socket] Failed to broadcast stock update:', err.message);
+    }
+    return true;
+  }
+
+  return false;
 }
 
 /**

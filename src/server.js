@@ -3,6 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import app from './app.js';
 import { startExpirationWorker } from './services/expirationService.js';
+import { initSocket } from './services/socketService.js';
 
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
@@ -14,6 +15,9 @@ const io = new Server(server, {
     methods: ['GET', 'POST']
   }
 });
+
+// Allow the services to broadcast events (e.g. `stock_updated`) to clients.
+initSocket(io);
 
 // Socket.io connection handler
 io.on('connection', (socket) => {

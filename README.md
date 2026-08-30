@@ -307,20 +307,6 @@ Useful checks: `npx prisma migration status` · `npx prisma db verify` (live DB 
 | `EXPIRATION_POLL_INTERVAL_MS` | —        | `1000`                  | Worker poll interval (the 60s reservation TTL is fixed in code)                     |
 | `NODE_ENV`                    | —        | `development`           | —                                                                                   |
 
-## Testing
-
-```bash
-npm test        # node:test via tsx — 7 suites / 42 tests, against a real PostgreSQL
-```
-
-- Requires the `DATABASE_URL` database from `.env` — each run creates its own users/drops with unique names (no seed required).
-- Test files run **sequentially** (`--test-concurrency=1`): suites share one database, and some suites run global expiration passes — parallel files would interfere with each other's fixtures.
-- **The concurrency test** (`reservation.test.js` #10, `stress.test.js`): creates a stock=1 drop, then fires 50/100 reservation requests through the real HTTP API simultaneously. Asserts exactly 1 × `201`, the rest × `409`, final `availableStock = 0`, exactly one ACTIVE reservation — and (same-user variant) that losing transactions roll their stock decrement back.
-- **The race tests** (`expirationPurchaseRace.test.js`, `phase14.e2e.test.js` Scenario 7): fire concurrent purchases and expirations against reservations whose expiry lands mid-burst, asserting that every interleaving settles into one valid outcome with all inventory invariants intact.
-- The **Phase 14 e2e** suite boots the real server (Express + Socket.io + worker) on an ephemeral port with two socket clients standing in for two browsers; Scenario 5 waits out a _real_ 60-second TTL, so a full run takes ~80 seconds. If a dev server runs concurrently it shares the database — the assertions are written to be actor-agnostic.
-
-**Verification snapshot (Phase 14):** 42/42 tests (3 consecutive full runs) · `prisma db verify` → "Database marker and schema match contract".
-
 ## Deployment
 
 > **Status: not deployed.** This section documents the intended topology and the decisions it requires; any claim of a working deployment would be false until a live URL exists.

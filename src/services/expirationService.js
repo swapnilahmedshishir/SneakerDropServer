@@ -1,5 +1,5 @@
-import { db } from '../prisma/db.ts';
-import { emitStockUpdated, emitReservationExpired } from './socketService.js';
+import { db } from "../prisma/db.ts";
+import { emitStockUpdated, emitReservationExpired } from "./socketService.js";
 
 // Business rule: reservations live for 60 seconds (enforced at creation time in
 // reservationService.js). Only the worker's POLL interval is configurable.
@@ -11,29 +11,13 @@ let workerRunning = false;
 function getPollIntervalMs() {
   const raw = process.env.EXPIRATION_POLL_INTERVAL_MS;
   const parsed = raw ? parseInt(raw, 10) : NaN;
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_POLL_INTERVAL_MS;
+  return Number.isInteger(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_POLL_INTERVAL_MS;
 }
 
 /**
- * Expire a single reservation atomically (Phase 7).
- *
- * One transaction:
- *   1. Conditional status flip  ACTIVE -> EXPIRED  but ONLY when
- *      `expiresAt <= now()` (database clock is authoritative).
- *      This single conditional UPDATE is the serialization point:
- *        - expiration vs purchase: the row lock serializes the two
- *          transactions; the loser re-evaluates after the winner commits and
- *          matches zero rows, so a reservation can never end up both
- *          PURCHASED-with-stock-restored or EXPIRED-with-a-purchase.
- *        - expiration vs expiration (multiple workers / instances): the same
- *          mechanism guarantees exactly one transaction per reservation wins
- *          the flip; losers affect zero rows.
- *   2. If and only if the flip matched one row, restore the unit of stock that
- *      was consumed when the reservation was created — in the SAME
- *      transaction, so the two changes commit together and an expired
- *      reservation is processed exactly once (stock can never be restored
- *      twice). Purchases never touch stock, so the only writer fighting here
- *      is reservation creation (decrement) and this (increment).
+ * Expire a single reservation atomically
  *
  * Returns true when this call performed the flip + restore, false otherwise.
  */
@@ -47,14 +31,18 @@ export async function expireReservation(reservationId) {
     WHERE "id" = ${parsedId}
       AND "status" = 'ACTIVE'
       AND "expiresAt" <= now()
-  `.affectedCount().build();
+  `
+    .affectedCount()
+    .build();
 
   const restorePlan = db.raw.sql`
     UPDATE "public"."drop" AS d
     SET "availableStock" = d."availableStock" + 1, "updatedAt" = now()
     FROM "public"."reservation" AS r
     WHERE r."id" = ${parsedId} AND d."id" = r."dropId" AND d."availableStock" < d."totalStock"
-  `.affectedCount().build();
+  `
+    .affectedCount()
+    .build();
 
   const expired = await db.transaction(async (tx) => {
     const flip = await tx.execute(flipPlan);
@@ -65,7 +53,9 @@ export async function expireReservation(reservationId) {
     await tx.execute(restorePlan);
 
     // Read the restored stock so the broadcast below reports a fresh value.
-    const reservation = await tx.orm.public.Reservation.where({ id: parsedId }).first();
+    const reservation = await tx.orm.public.Reservation.where({
+      id: parsedId,
+    }).first();
     return { restored: true, dropId: reservation ? reservation.dropId : null };
   });
 
@@ -83,7 +73,7 @@ export async function expireReservation(reservationId) {
         emitStockUpdated(drop.id, drop.availableStock);
       }
     } catch (err) {
-      console.error('[socket] Failed to broadcast stock update:', err.message);
+      console.error("[socket] Failed to broadcast stock update:", err.message);
     }
     return true;
   }
@@ -94,21 +84,13 @@ export async function expireReservation(reservationId) {
 /**
  * Scan for due ACTIVE reservations and expire them.
  *
- * The candidate scan is a best-effort read (it simply answers "what might be
- * due"); correctness never depends on it because every candidate is processed
- * through `expireReservation`, whose conditional UPDATE is the authoritative,
- * idempotent gate. This makes the process safe when the scan races with a
- * purchase, when multiple worker iterations overlap, or when several backend
- * instances run the same loop.
- *
  * Returns the number of reservations expired by THIS call.
  */
 export async function runExpiration() {
   const now = new Date().toISOString();
 
-  const candidates = await db.orm.public.Reservation
-    .select('id')
-    .where({ status: 'ACTIVE' })
+  const candidates = await db.orm.public.Reservation.select("id")
+    .where({ status: "ACTIVE" })
     .where((r) => r.expiresAt.lte(now))
     .all();
 
@@ -142,7 +124,7 @@ export function startExpirationWorker(intervalMs = getPollIntervalMs()) {
     workerRunning = true;
     runExpiration()
       .catch((err) => {
-        console.error('[expiration] worker error:', err);
+        console.error("[expiration] worker error:", err);
       })
       .finally(() => {
         workerRunning = false;
